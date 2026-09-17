@@ -148,6 +148,8 @@ class MainActivity : Activity() {
         outState.putString(STATE_SELECTED_JOB_ID, selectedJobId)
         outState.putBoolean(STATE_ALLOW_AUTO_SELECT_CONVERSATION, allowAutoSelectConversation)
         outState.putStringArrayList(STATE_COLLAPSED_TURNS, ArrayList(collapsedTurns))
+        if (::promptField.isInitialized) outState.putString(STATE_PROMPT_DRAFT, promptField.text.toString())
+        if (::conversationScroll.isInitialized) outState.putInt(STATE_CONVERSATION_SCROLL_Y, conversationScroll.scrollY)
         super.onSaveInstanceState(outState)
     }
 

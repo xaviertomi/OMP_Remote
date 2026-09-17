@@ -178,7 +178,7 @@ Update it continuously:
 - [x] Add clearly separated `KILL OMP REMOTE` with explicit scope confirmation.
 - [x] After kill, use emergency status and display local-root reactivation requirement.
 - [x] Confirm no Enable UI/code path exists.
-- [x] Build versioned debug APK 0.5/code 5 at `android/app/build/outputs/apk/debug/omp-remote-v0.5.apk`; size `918228` bytes; SHA-256 `b8d3f5a2183c167e710178e89e5aa79db357f984178266b09421933b7c3f8549`. Fixed startup crash, restored HTTPS fields, added IME composer targeting, server-owned multi-turn conversations, bounded OMP context, owner-scoped cache isolation, JSON message persistence, conversation error display, queued/running job cancellation, on-demand output discovery, human-readable file listing/document saving and collapsible turn cards.
+- [x] Build versioned debug APK 0.5/code 5 at `android/app/build/outputs/apk/debug/omp-remote-v0.5.apk`; size `918316` bytes; SHA-256 `17c404f89b054d6fe094b2f5c0f708cddccd939089b15fa0b29b257c665e327c`. Fixed startup crash, restored HTTPS fields, added IME composer targeting, server-owned multi-turn conversations, bounded OMP context, owner-scoped cache isolation, JSON message persistence, conversation error display, queued/running job cancellation, on-demand output discovery, human-readable file listing/document saving and collapsible turn cards with persisted expansion state.
 - [ ] Build release APK with deployment signing key.
 - [x] Keep signing secrets outside Git.
 - [ ] Test on device/ADB if available; current environment has no physical/emulator verification.
