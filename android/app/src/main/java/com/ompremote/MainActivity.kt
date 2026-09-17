@@ -48,7 +48,7 @@ class MainActivity : Activity() {
     private val executor = Executors.newCachedThreadPool()
 
     private lateinit var status: TextView
-    private lateinit var conversationView: TextView
+    private lateinit var conversationView: LinearLayout
     private lateinit var diagnosticsView: TextView
     private lateinit var diagnosticsToggle: Button
     private lateinit var jobsContainer: LinearLayout
@@ -87,6 +87,7 @@ class MainActivity : Activity() {
     private var pendingDownloadBytes: ByteArray? = null
     private var pendingDownloadName: String = "download.bin"
     private var pendingDownloadMime: String = "application/octet-stream"
+    private val collapsedTurns = mutableSetOf<String>()
     private var selectedJobState: String? = null
     @Volatile
     private var submitting = false
@@ -96,6 +97,7 @@ class MainActivity : Activity() {
     private var conversationEpoch = 0L
 
     companion object {
+        private const val STATE_COLLAPSED_TURNS = "collapsed_turns"
         private const val OPEN_DOCUMENT_REQUEST = 4001
         private const val SAVE_DOWNLOAD_REQUEST = 4002
         private const val STATE_SELECTED_CONVERSATION_ID = "selected_conversation_id"
@@ -125,6 +127,7 @@ class MainActivity : Activity() {
             STATE_ALLOW_AUTO_SELECT_CONVERSATION,
             true,
         ) ?: true
+        collapsedTurns.addAll(savedInstanceState?.getStringArrayList(STATE_COLLAPSED_TURNS).orEmpty())
         savedInstanceState?.getString(STATE_PROMPT_DRAFT)?.let { draft ->
             promptField.setText(draft)
             promptField.setSelection(draft.length)
@@ -144,8 +147,7 @@ class MainActivity : Activity() {
         outState.putString(STATE_SELECTED_CONVERSATION_ID, selectedConversationId)
         outState.putString(STATE_SELECTED_JOB_ID, selectedJobId)
         outState.putBoolean(STATE_ALLOW_AUTO_SELECT_CONVERSATION, allowAutoSelectConversation)
-        if (::promptField.isInitialized) outState.putString(STATE_PROMPT_DRAFT, promptField.text.toString())
-        if (::conversationScroll.isInitialized) outState.putInt(STATE_CONVERSATION_SCROLL_Y, conversationScroll.scrollY)
+        outState.putStringArrayList(STATE_COLLAPSED_TURNS, ArrayList(collapsedTurns))
         super.onSaveInstanceState(outState)
     }
 
@@ -291,12 +293,9 @@ class MainActivity : Activity() {
     }
 
     private fun buildConversationScreen(): ScrollView {
-        conversationView = TextView(this).apply {
-            textSize = 15f
-            setTextColor(TEXT)
-            setTextIsSelectable(true)
-            setPadding(dp(18), dp(18), dp(18), dp(18))
-            background = rounded(PANEL, dp(18))
+        conversationView = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(2), dp(2), dp(2), dp(2))
             contentDescription = "Dialogue de la conversation active"
         }
         diagnosticsView = TextView(this).apply {
@@ -947,17 +946,16 @@ class MainActivity : Activity() {
         } else {
             "Aucun job associé sélectionné"
         }
-        conversationView.text = when {
-            active == null && all.isEmpty() -> "Aucune conversation. Envoyez un message pour commencer."
-            active == null -> "Sélectionnez une conversation pour afficher le dialogue."
-            active.messages.isEmpty() -> "Conversation ${active.id}\n\nAucun message reçu. Actualisation en cours…"
-            else -> active.messages.mapIndexed { index, message ->
-                val job = message.jobId ?: "aucun job"
-                val output = message.stdout.ifBlank { "(aucune sortie OMP)" }
-                val error = message.error?.takeIf { it.isNotBlank() }?.let { "\n\nErreur :\n$it" }.orEmpty()
-                "Tour ${index + 1}\n\nVous :\n${message.prompt}\n\nJob associé :\n$job\n\nOMP Remote : ${message.state}\n\nOMP :\n$output$error"
-            }.joinToString("\n\n────────────\n\n")
+        conversationView.removeAllViews()
+        when {
+            active == null && all.isEmpty() -> conversationView.addView(conversationNotice("Aucune conversation. Envoyez un message pour commencer."))
+            active == null -> conversationView.addView(conversationNotice("Sélectionnez une conversation pour afficher le dialogue."))
+            active.messages.isEmpty() -> conversationView.addView(conversationNotice("Conversation ${active.id}\n\nAucun message reçu. Actualisation en cours…"))
+            else -> active.messages.forEachIndexed { index, message ->
+                conversationView.addView(turnCard(active.id, index, message))
+            }
         }
+
         val stderr = selectedMessage?.stderr.orEmpty()
         val error = selectedMessage?.error?.takeIf { it.isNotBlank() }
         diagnosticsView.text = when {
@@ -969,6 +967,70 @@ class MainActivity : Activity() {
         diagnosticsView.visibility = if (selectedMessage == null) View.GONE else diagnosticsView.visibility
         updateConversationSelector()
         updateCancelButton()
+    }
+    private fun conversationNotice(message: String): TextView = TextView(this).apply {
+        text = message
+        textSize = 15f
+        setTextColor(TEXT)
+        setPadding(dp(18), dp(18), dp(18), dp(18))
+        background = rounded(PANEL, dp(18))
+    }
+
+    private fun turnCard(
+        conversationId: String,
+        index: Int,
+        message: ConversationStore.Message,
+    ): LinearLayout {
+        val key = "$conversationId:${message.jobId ?: index}"
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(2), dp(2), dp(2), dp(2))
+            background = rounded(PANEL, dp(16))
+        }
+        val body = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14), dp(4), dp(14), dp(10))
+        }
+        body.addView(messageBlock("Vous", message.prompt))
+        body.addView(messageBlock("Réponse OMP", message.stdout.ifBlank { "(aucune sortie OMP)" }))
+        message.error?.takeIf { it.isNotBlank() }?.let { body.addView(messageBlock("Erreur", it)) }
+        val header = TextView(this).apply {
+            textSize = 15f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(TEXT)
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            minHeight = dp(48)
+            isClickable = true
+            isFocusable = true
+            contentDescription = "Tour ${index + 1}. Appuyer pour ${if (key in collapsedTurns) "développer" else "réduire"}."
+            background = rounded(PANEL_LIGHT, dp(14))
+        }
+        fun updateHeader() {
+            val collapsed = key in collapsedTurns
+            header.text = "${if (collapsed) "▶" else "▼"}  Tour ${index + 1} · ${message.state}"
+            header.contentDescription = "Tour ${index + 1}, état ${message.state}. Appuyer pour ${if (collapsed) "développer" else "réduire"}."
+            body.visibility = if (collapsed) View.GONE else View.VISIBLE
+        }
+        header.setOnClickListener {
+            if (!collapsedTurns.add(key)) collapsedTurns.remove(key)
+            updateHeader()
+        }
+        card.addView(header)
+        card.addView(body)
+        updateHeader()
+        card.layoutParams = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+        ).apply { setMargins(0, 0, 0, dp(8)) }
+        return card
+    }
+
+    private fun messageBlock(label: String, value: String): TextView = TextView(this).apply {
+        text = "$label :\n$value"
+        textSize = 14f
+        setTextColor(TEXT)
+        setPadding(0, dp(8), 0, dp(8))
+        setTextIsSelectable(true)
     }
 
     private fun updateConversationSelector() {
