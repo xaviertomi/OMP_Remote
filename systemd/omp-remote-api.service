@@ -1,0 +1,31 @@
+[Unit]
+Description=OMP Remote main API
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/omp-remote/server.env
+
+[Service]
+Type=simple
+User=omp-remote-api
+Group=omp-remote
+WorkingDirectory=/opt/omp-remote
+Environment=PYTHONPATH=/opt/omp-remote/server
+EnvironmentFile=/etc/omp-remote/server.env
+ExecStart=/opt/omp-remote/server/.venv/bin/python -m omp_remote serve
+Restart=on-failure
+RestartSec=5
+UMask=0007
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/var/lib/omp-remote /run/omp-remote
+RuntimeDirectory=omp-remote
+
+[Install]
+WantedBy=multi-user.target

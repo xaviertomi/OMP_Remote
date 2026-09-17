@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+export PYTHONPATH=/opt/omp-remote/server${PYTHONPATH:+:$PYTHONPATH}
+export OMP_REMOTE_DATA_DIR=${OMP_REMOTE_DATA_DIR:-/var/lib/omp-remote}
+export OMP_REMOTE_DB_PATH=${OMP_REMOTE_DB_PATH:-/var/lib/omp-remote/omp-remote.sqlite3}
+export OMP_REMOTE_STATE_PATH=${OMP_REMOTE_STATE_PATH:-/var/lib/omp-remote/state/state}
+export OMP_REMOTE_WORKSPACE_ROOT=${OMP_REMOTE_WORKSPACE_ROOT:-/var/lib/omp-remote/jobs}
+export OMP_REMOTE_ALLOWED_USERS=${OMP_REMOTE_ALLOWED_USERS:-tomi}
+exec /opt/omp-remote/server/.venv/bin/python -m omp_remote.admin "$@"

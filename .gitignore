@@ -1,0 +1,24 @@
+# OMP Remote runtime state, databases, workspaces, logs, and generated files
+server/data/
+server/.venv/
+server/*.sqlite3
+server/*.sqlite3-*
+
+# Python caches and local tooling
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Local configuration and credentials
+.env
+.env.*
+*.pem
+*.key
+*.token
+
+# Android and build outputs
+android/.gradle/
+android/build/
+android/app/build/
+*.apk

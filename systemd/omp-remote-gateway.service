@@ -1,0 +1,30 @@
+[Unit]
+Description=OMP Remote private API gateway
+After=omp-remote-api.service omp-remote-emergency.service
+Requires=omp-remote-api.service omp-remote-emergency.service
+
+[Service]
+Type=simple
+User=omp-remote-api
+Group=omp-remote
+WorkingDirectory=/opt/omp-remote
+Environment=PYTHONPATH=/opt/omp-remote/server
+EnvironmentFile=/etc/omp-remote/server.env
+ExecStart=/opt/omp-remote/server/.venv/bin/python -m omp_remote gateway
+Restart=on-failure
+RestartSec=5
+UMask=0007
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/var/lib/omp-remote /run/omp-remote
+RuntimeDirectory=omp-remote-gateway
+
+[Install]
+WantedBy=multi-user.target

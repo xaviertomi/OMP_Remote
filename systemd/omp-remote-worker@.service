@@ -1,0 +1,30 @@
+[Unit]
+Description=OMP Remote worker for %i
+After=omp-remote-api.service
+RequiresMountsFor=/var/lib/omp-remote
+ConditionPathExists=/etc/omp-remote/server.env
+
+[Service]
+Type=simple
+User=%i
+Group=%i
+SupplementaryGroups=omp-remote
+Environment=PYTHONPATH=/opt/omp-remote/server
+EnvironmentFile=/etc/omp-remote/server.env
+ExecStart=/opt/omp-remote/server/.venv/bin/python -m omp_remote worker --owner-user %i --omp-binary /home/%i/.local/bin/omp
+RestartSec=5
+UMask=0007
+KillMode=control-group
+TimeoutStopSec=15
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/var/lib/omp-remote /var/lib/omp-remote/jobs /var/lib/omp-remote/state /home/%i/.omp
+[Install]
+WantedBy=multi-user.target
